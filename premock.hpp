@@ -197,16 +197,27 @@ struct CanBeStreamed<T, std::void_t<decltype(std::cout << std::declval<T&>())> >
 
 // default implementation for types that don't define operator<<
 template<typename T>
-std::string toString(const T&, typename std::enable_if<!CanBeStreamed<T>::value>::type* = nullptr) {
-    return "<cannot print>";
+std::enable_if_t<!CanBeStreamed<T>::value, std::string> toString(const T&) {
+	return "<cannot print>";
 }
 
-// implementation for types that can be streamed (and therefore printed)
+// implementation for pointer-types, that casts pointer to void* in case of a nullptr
 template<typename T>
-std::string toString(const T& value, typename std::enable_if<CanBeStreamed<T>::value>::type* = nullptr) {
-    std::stringstream stream;
-    stream << value;
-    return stream.str();
+std::enable_if_t<CanBeStreamed<T>::value && std::is_pointer<T>::value, std::string> toString(const T& value) {
+	std::stringstream stream;
+	if (value)
+		stream << value;
+	else
+		stream << reinterpret_cast<void*>(value);
+	return stream.str();
+}
+
+// implementation for non-pointer-types
+template<typename T>
+std::enable_if_t<CanBeStreamed<T>::value && !std::is_pointer<T>::value, std::string> toString(const T& value) {
+	std::stringstream stream;
+	stream << value;
+	return stream.str();
 }
 
 // helper class to print std::tuple. A class is used instead of a function to
